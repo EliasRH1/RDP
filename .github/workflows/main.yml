@@ -1,4 +1,4 @@
-name: Linux-XRDP
+name: Linux-XRDP-LXDE
 
 on:
   workflow_dispatch:
@@ -13,23 +13,23 @@ jobs:
         run: |
           sudo apt update
 
-      - name: Install Desktop Environment (XFCE)
+      - name: Install LXDE desktop
         run: |
-          sudo apt install -y xfce4 xfce4-goodies xfconf dbus-x11
+          sudo apt install -y lxde-core lxterminal dbus-x11
 
       - name: Install XRDP
         run: |
           sudo apt install -y xrdp
           sudo systemctl enable xrdp
 
-      - name: Configure XRDP session correctly
+      - name: Configure XRDP for LXDE
         run: |
-          # Set XFCE as default for all users
-          echo "startxfce4" | sudo tee /etc/skel/.xsession
+          # Force LXDE session
+          echo "startlxde" | sudo tee /etc/skel/.xsession
           
-          # Clean broken env vars and force XFCE
+          # Clean broken env vars and start LXDE
           sudo sed -i '1i unset DBUS_SESSION_BUS_ADDRESS\nunset XDG_RUNTIME_DIR' /etc/xrdp/startwm.sh
-          sudo sed -i 's/^exec.*/exec startxfce4 \&/' /etc/xrdp/startwm.sh
+          sudo sed -i 's/^exec.*/exec startlxde \&/' /etc/xrdp/startwm.sh
           
           sudo systemctl restart xrdp
 
@@ -39,7 +39,6 @@ jobs:
           echo "rdp:rdp12345" | sudo chpasswd
           sudo usermod -aG sudo rdp
           
-          # Ensure session file exists for user
           sudo cp /etc/skel/.xsession /home/rdp/.xsession
           sudo chown rdp:rdp /home/rdp/.xsession
 
@@ -49,14 +48,14 @@ jobs:
 
       - name: Connect to Tailscale
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-linux-xrdp
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-linux-lxde
 
       - name: Show RDP access info
         run: |
           IP=$(tailscale ip -4)
           echo ""
           echo "==============================="
-          echo " XRDP ACCESS READY"
+          echo " XRDP + LXDE READY"
           echo " IP: $IP"
           echo " PORT: 3389"
           echo " USER: rdp"
