@@ -1,4 +1,4 @@
-name: Linux-XRDP
+name: Linux-XRDP-XFCE
 
 on:
   workflow_dispatch:
@@ -13,21 +13,21 @@ jobs:
         run: |
           sudo apt update
 
-      - name: Install Desktop Environment (XFCE)
+      - name: Install XFCE minimal
         run: |
-          sudo apt install -y xfce4 xfce4-goodies xfconf dbus-x11
+          sudo apt install -y xfce4 xfce4-session xfconf dbus-x11
 
       - name: Install XRDP
         run: |
           sudo apt install -y xrdp
           sudo systemctl enable xrdp
 
-      - name: Configure XRDP session correctly
+      - name: Configure XRDP for XFCE
         run: |
-          # Set XFCE as default for all users
+          # Default session
           echo "startxfce4" | sudo tee /etc/skel/.xsession
           
-          # Clean broken env vars and force XFCE
+          # Fix dbus & env
           sudo sed -i '1i unset DBUS_SESSION_BUS_ADDRESS\nunset XDG_RUNTIME_DIR' /etc/xrdp/startwm.sh
           sudo sed -i 's/^exec.*/exec startxfce4 \&/' /etc/xrdp/startwm.sh
           
@@ -39,7 +39,6 @@ jobs:
           echo "rdp:rdp12345" | sudo chpasswd
           sudo usermod -aG sudo rdp
           
-          # Ensure session file exists for user
           sudo cp /etc/skel/.xsession /home/rdp/.xsession
           sudo chown rdp:rdp /home/rdp/.xsession
 
@@ -49,14 +48,14 @@ jobs:
 
       - name: Connect to Tailscale
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-linux-xrdp
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-linux-xfce
 
       - name: Show RDP access info
         run: |
           IP=$(tailscale ip -4)
           echo ""
           echo "==============================="
-          echo " XRDP ACCESS READY"
+          echo " XRDP + XFCE READY"
           echo " IP: $IP"
           echo " PORT: 3389"
           echo " USER: rdp"
