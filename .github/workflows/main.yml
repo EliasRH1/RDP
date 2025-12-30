@@ -1,4 +1,4 @@
-name: Ubuntu-GNOME-noVNC
+name: Ubuntu-Yaru-noVNC
 
 on:
   workflow_dispatch:
@@ -13,9 +13,11 @@ jobs:
         run: |
           sudo apt update
 
-      - name: Install Ubuntu GNOME desktop
+      - name: Install XFCE + Yaru theme
         run: |
-          sudo apt install -y ubuntu-desktop-minimal gnome-terminal tightvncserver novnc websockify dbus-x11
+          sudo apt install -y xfce4 xfce4-goodies \
+            yaru-theme-gtk yaru-theme-icon yaru-theme-sound \
+            tightvncserver novnc websockify dbus-x11
 
       - name: Create VNC password
         run: |
@@ -23,15 +25,13 @@ jobs:
           echo "ubuntu" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Configure VNC startup (GNOME)
+      - name: Configure VNC startup (XFCE)
         run: |
           cat <<EOF > ~/.vnc/xstartup
           #!/bin/sh
           unset SESSION_MANAGER
           unset DBUS_SESSION_BUS_ADDRESS
-          export XDG_CURRENT_DESKTOP=GNOME
-          export GNOME_SHELL_SESSION_MODE=ubuntu
-          exec gnome-session &
+          exec startxfce4 &
           EOF
           chmod +x ~/.vnc/xstartup
 
@@ -39,6 +39,12 @@ jobs:
         run: |
           vncserver -kill :1 || true
           vncserver :1 -geometry 1280x720 -depth 24
+
+      - name: Apply Ubuntu Yaru theme
+        run: |
+          xfconf-query -c xsettings -p /Net/ThemeName -s "Yaru"
+          xfconf-query -c xsettings -p /Net/IconThemeName -s "Yaru"
+          xfconf-query -c xsettings -p /Net/SoundThemeName -s "Yaru"
 
       - name: Start noVNC
         run: |
@@ -51,17 +57,17 @@ jobs:
 
       - name: Connect to Tailscale
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-ubuntu-gnome
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-ubuntu-yaru
 
       - name: Show access info
         run: |
           IP=$(tailscale ip -4)
           echo ""
           echo "==============================="
-          echo " UBUNTU ORIGINAL READY"
+          echo " UBUNTU LOOK READY"
           echo " URL: http://$IP:6080"
-          echo " VNC PASSWORD: ubuntu"
-          echo " DESKTOP: GNOME (Yaru)"
+          echo " PASSWORD: ubuntu"
+          echo " DESKTOP: XFCE + Yaru"
           echo "==============================="
           echo ""
           sleep 999999
