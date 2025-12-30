@@ -15,17 +15,20 @@ jobs:
 
       - name: Install Desktop Environment (XFCE)
         run: |
-          sudo apt install -y xfce4 xfce4-goodies
+          sudo apt install -y xfce4 xfce4-goodies xfconf dbus-x11
 
       - name: Install XRDP
         run: |
-          sudo apt install -y xrdp dbus-x11
+          sudo apt install -y xrdp
           sudo systemctl enable xrdp
 
-      - name: Fix XRDP black screen & dbus
+      - name: Configure XRDP session correctly
         run: |
-          echo "startxfce4" > ~/.xsession
+          # Set XFCE as default for all users
+          echo "startxfce4" | sudo tee /etc/skel/.xsession
           
+          # Clean broken env vars and force XFCE
+          sudo sed -i '1i unset DBUS_SESSION_BUS_ADDRESS\nunset XDG_RUNTIME_DIR' /etc/xrdp/startwm.sh
           sudo sed -i 's/^exec.*/exec startxfce4 \&/' /etc/xrdp/startwm.sh
           
           sudo systemctl restart xrdp
@@ -35,11 +38,10 @@ jobs:
           sudo useradd -m rdp
           echo "rdp:rdp12345" | sudo chpasswd
           sudo usermod -aG sudo rdp
-
-      - name: Open RDP port
-        run: |
-          sudo ufw allow 3389/tcp
-          sudo ufw reload || true
+          
+          # Ensure session file exists for user
+          sudo cp /etc/skel/.xsession /home/rdp/.xsession
+          sudo chown rdp:rdp /home/rdp/.xsession
 
       - name: Install Tailscale
         run: |
@@ -59,6 +61,7 @@ jobs:
           echo " PORT: 3389"
           echo " USER: rdp"
           echo " PASS: rdp12345"
+          echo " SESSION: Xorg"
           echo "==============================="
           echo ""
           sleep 999999
