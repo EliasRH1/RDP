@@ -19,16 +19,16 @@ jobs:
 
       - name: Install XRDP
         run: |
-          sudo apt install -y xrdp
+          sudo apt install -y xrdp dbus-x11
           sudo systemctl enable xrdp
-          sudo systemctl restart xrdp
 
-      - name: Configure XRDP session
+      - name: Fix XRDP black screen & dbus
         run: |
-          echo xfce4-session > ~/.xsession
-          sudo sed -i.bak '/fi/a \
-          unset DBUS_SESSION_BUS_ADDRESS\n\
-          unset XDG_RUNTIME_DIR\n' /etc/xrdp/startwm.sh
+          echo "startxfce4" > ~/.xsession
+          
+          sudo sed -i 's/^exec.*/exec startxfce4 \&/' /etc/xrdp/startwm.sh
+          
+          sudo systemctl restart xrdp
 
       - name: Create RDP user
         run: |
