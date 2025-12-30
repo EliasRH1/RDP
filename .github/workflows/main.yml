@@ -1,10 +1,10 @@
-name: Linux-noVNC
+name: Ubuntu-GNOME-noVNC
 
 on:
   workflow_dispatch:
 
 jobs:
-  linux-gui:
+  ubuntu-gui:
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
@@ -13,23 +13,25 @@ jobs:
         run: |
           sudo apt update
 
-      - name: Install LXDE + VNC
+      - name: Install Ubuntu GNOME desktop
         run: |
-          sudo apt install -y lxde-core lxterminal tightvncserver novnc websockify
+          sudo apt install -y ubuntu-desktop-minimal gnome-terminal tightvncserver novnc websockify dbus-x11
 
       - name: Create VNC password
         run: |
           mkdir -p ~/.vnc
-          echo "password" | vncpasswd -f > ~/.vnc/passwd
+          echo "ubuntu" | vncpasswd -f > ~/.vnc/passwd
           chmod 600 ~/.vnc/passwd
 
-      - name: Configure VNC startup
+      - name: Configure VNC startup (GNOME)
         run: |
           cat <<EOF > ~/.vnc/xstartup
           #!/bin/sh
           unset SESSION_MANAGER
           unset DBUS_SESSION_BUS_ADDRESS
-          exec startlxde &
+          export XDG_CURRENT_DESKTOP=GNOME
+          export GNOME_SHELL_SESSION_MODE=ubuntu
+          exec gnome-session &
           EOF
           chmod +x ~/.vnc/xstartup
 
@@ -49,16 +51,17 @@ jobs:
 
       - name: Connect to Tailscale
         run: |
-          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-linux-novnc
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=gh-ubuntu-gnome
 
       - name: Show access info
         run: |
           IP=$(tailscale ip -4)
           echo ""
           echo "==============================="
-          echo " Linux GUI READY (noVNC)"
+          echo " UBUNTU ORIGINAL READY"
           echo " URL: http://$IP:6080"
-          echo " VNC PASSWORD: password"
+          echo " VNC PASSWORD: ubuntu"
+          echo " DESKTOP: GNOME (Yaru)"
           echo "==============================="
           echo ""
           sleep 999999
