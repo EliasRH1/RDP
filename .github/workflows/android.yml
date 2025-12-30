@@ -1,0 +1,51 @@
+name: Android Emulator
+
+on:
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils \
+                            unzip wget curl xvfb openbox novnc websockify
+
+    - name: Setup Android SDK
+      run: |
+        mkdir -p $HOME/android-sdk
+        cd $HOME/android-sdk
+        wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+        unzip commandlinetools-linux-*.zip
+        mkdir cmdline-tools/latest
+        mv cmdline-tools/* cmdline-tools/latest/
+        echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin:$HOME/android-sdk/platform-tools:$HOME/android-sdk/emulator" >> $GITHUB_ENV
+
+    - name: Install Android Emulator
+      run: |
+        yes | sdkmanager --licenses
+        sdkmanager "platform-tools" "platforms;android-30" "emulator" \
+                   "system-images;android-30;google_apis;x86"
+
+    - name: Create AVD
+      run: |
+        echo "no" | avdmanager create avd -n test \
+          -k "system-images;android-30;google_apis;x86" --force
+
+    - name: Start Emulator + noVNC
+      run: |
+        Xvfb :1 &
+        export DISPLAY=:1
+        openbox &
+        emulator -avd test -no-audio -no-window -gpu swiftshader_indirect &
+        websockify --web=/usr/share/novnc/ 6080 localhost:5901
+
+    - name: Keep Alive
+      run: |
+        echo "Android listo en http://localhost:6080"
+        sleep 999999
