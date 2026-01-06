@@ -1,3 +1,4 @@
+<domain xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0" type="kvm">
   <name>win10</name>
   <uuid>509deb38-6630-4f49-8016-7f83100a7945</uuid>
   <metadata>
