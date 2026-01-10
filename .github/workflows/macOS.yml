@@ -1,0 +1,42 @@
+name: macOS VNC Tailscale
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Install Tailscale
+      run: |
+        brew install tailscale
+
+    - name: Start Tailscale
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      run: |
+        sudo tailscaled &
+        sudo tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=macos-gh
+
+    - name: Enable VNC
+      run: |
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -activate -configure -allowAccessFor -allUsers -privs -all \
+          -restart -agent -console
+
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -configure -clientopts -setvnclegacy -vnclegacy yes
+
+        echo vncpass | perl -we 'BEGIN { @k = unpack "C*", pack "H*", "1734516E8BA8C5E2FF1C39567390ADCA"}; \
+        $_ = <>; chomp; s/^(.{8}).*/$1/; @p = unpack "C*", $_; \
+        foreach (@k) { printf "%02X", $_ ^ (shift @p || 0) }; print "\n"' \
+        | sudo tee /Library/Preferences/com.apple.VNCSettings.txt
+
+    - name: Show IP
+      run: |
+        tailscale ip -4
+
+    - name: Keep alive
+      uses: mxschmitt/action-tmate@v2
