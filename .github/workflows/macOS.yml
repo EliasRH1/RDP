@@ -1,0 +1,66 @@
+name: macOS VNC + Tailscale (SAFE)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Prepare system
+      run: |
+        sudo systemsetup -setremotelogin on || true
+
+    - name: Install Tailscale
+      run: |
+        brew update
+        brew install tailscale
+
+    - name: Start Tailscale
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      run: |
+        sudo tailscaled &
+        sleep 5
+        sudo tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=macos-gh
+
+    - name: Create VNC user
+      run: |
+        sudo sysadminctl -addUser vncuser -password vncpass -admin || true
+        sudo createhomedir -c -u vncuser || true
+
+    - name: Enable Screen Sharing service
+      run: |
+        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist || true
+
+    - name: Enable legacy VNC + permissions
+      run: |
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+          -activate \
+          -configure -allowAccessFor -allUsers \
+          -configure -clientopts -setvnclegacy -vnclegacy yes \
+          -configure -privs -all \
+          -restart -agent -console
+
+    - name: Force GUI rendering (safe)
+      run: |
+        open -a Finder || true
+        open -a Dock || true
+        open -a "System Settings" || true
+        sleep 10
+
+    - name: Show connection info
+      run: |
+        echo "===================================="
+        echo " CONNECT WITH bVNC (ANDROID)"
+        echo "------------------------------------"
+        echo " Host: $(tailscale ip -4)"
+        echo " Port: 5900"
+        echo " User: vncuser"
+        echo " Pass: vncpass"
+        echo "===================================="
+
+    - name: Keep macOS alive
+      uses: mxschmitt/action-tmate@v2
