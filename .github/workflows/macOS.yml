@@ -1,0 +1,42 @@
+name: macOS VNC Tailscale FIX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 360
+
+    steps:
+    - name: Install Tailscale
+      run: brew install tailscale
+
+    - name: Start Tailscale
+      env:
+        TAILSCALE_AUTHKEY: ${{ secrets.TAILSCALE_AUTHKEY }}
+      run: |
+        sudo tailscaled &
+        sudo tailscale up --authkey=$TAILSCALE_AUTHKEY --hostname=macos-gh
+
+    - name: Create user
+      run: |
+        sudo sysadminctl -addUser vncuser -password vncpass -admin
+
+    - name: Enable Screen Sharing
+      run: |
+        sudo defaults write /var/db/launchd.db/com.apple.launchd/overrides.plist com.apple.screensharing -dict Disabled -bool false
+        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+
+    - name: Enable legacy VNC
+      run: |
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+        -activate -configure -allowAccessFor -allUsers -privs -all \
+        -configure -clientopts -setvnclegacy -vnclegacy yes \
+        -restart -agent -console
+
+    - name: Show Tailscale IP
+      run: tailscale ip -4
+
+    - name: Keep alive
+      uses: mxschmitt/action-tmate@v2
